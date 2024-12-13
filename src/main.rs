@@ -44,28 +44,14 @@ fn parse_and_prepare_df() -> Result<DataFrame, Box<dyn Error>> {
         // Sort by date and region
         .sort(["date", "region"], Default::default());
 
-    let df = q.collect()?;
+    let long_df = q.collect()?;
 
-    Ok(df)
+    Ok(long_df)
 }
 
-fn describe_df(df: &DataFrame) -> Result<(), Box<dyn Error>> {
-    // TODO: Print more detailed summary stats
-    println!("{}", df);
-
-    Ok(())
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
-    env::set_var("POLARS_FMT_MAX_ROWS", "20");
-    env::set_var("POLARS_FMT_MAX_COLS", "20");
-
-    let df = parse_and_prepare_df()?;
-
-    describe_df(&df)?;
-
-    let df = pivot::pivot_stable(
-        &df,
+fn convert_and_diff_df(long_df: &DataFrame) -> Result<DataFrame, Box<dyn Error>> {
+    let wide_df = pivot::pivot_stable(
+        long_df,
         ["region"],
         Some(["date"]),
         Some(["price"]),
@@ -85,9 +71,44 @@ fn main() -> Result<(), Box<dyn Error>> {
     )])
     .fill_null(0)
     .collect()?;
-    println!("{}", df);
 
-    // TODO: Calculate corrs and make graph
+    Ok(wide_df)
+}
+
+fn calc_corr_df(wide_df: DataFrame) -> Result<(Vec<PlSmallStr>, DataFrame), Box<dyn Error>> {
+    let regions = wide_df.get_column_names_owned();
+
+    let corr = wide_df
+        .lazy()
+        .select(
+            regions
+                .iter()
+                .flat_map(|lhs| {
+                    regions.iter().map(move |rhs| {
+                        pearson_corr(col(lhs.to_owned()), col(rhs.to_owned()))
+                            .alias(format!("{}, {}", lhs, rhs))
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+        .collect()?;
+
+    Ok((regions, corr))
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    env::set_var("POLARS_FMT_MAX_ROWS", "20");
+    env::set_var("POLARS_FMT_MAX_COLS", "20");
+
+    let long_df = parse_and_prepare_df()?;
+    println!("{}", long_df);
+
+    let wide_df = convert_and_diff_df(&long_df)?;
+    println!("{}", wide_df);
+
+    let (regions, corr) = calc_corr_df(wide_df)?;
+    println!("{:?}", regions);
+    println!("{}", corr);
 
     Ok(())
 }

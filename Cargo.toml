@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-polars = { version = "0.45.1", features = ["csv", "describe", "dtype-date", "is_in", "lazy", "pivot", "strings"] }
+polars = { version = "0.45.1", features = ["cov", "csv", "describe", "dtype-date", "is_in", "lazy", "pivot", "strings"] }
