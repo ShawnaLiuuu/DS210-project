@@ -49,12 +49,45 @@ fn parse_and_prepare_df() -> Result<DataFrame, Box<dyn Error>> {
     Ok(df)
 }
 
+fn describe_df(df: &DataFrame) -> Result<(), Box<dyn Error>> {
+    // TODO: Print more detailed summary stats
+    println!("{}", df);
+
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     env::set_var("POLARS_FMT_MAX_ROWS", "20");
     env::set_var("POLARS_FMT_MAX_COLS", "20");
 
     let df = parse_and_prepare_df()?;
+
+    describe_df(&df)?;
+
+    let df = pivot::pivot_stable(
+        &df,
+        ["region"],
+        Some(["date"]),
+        Some(["price"]),
+        false,
+        None,
+        None,
+    )?
+    .lazy()
+    .sort(["date"], Default::default())
+    .drop(["date"])
+    .select([all().map(
+        |price| {
+            let price_shifted = price.shift(1);
+            Ok(Some((price - price_shifted)?))
+        },
+        Default::default(),
+    )])
+    .fill_null(0)
+    .collect()?;
     println!("{}", df);
+
+    // TODO: Calculate corrs and make graph
 
     Ok(())
 }
