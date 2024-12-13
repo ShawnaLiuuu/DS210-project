@@ -4,4 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+petgraph = "0.6.5"
 polars = { version = "0.45.1", features = ["cov", "csv", "describe", "dtype-date", "is_in", "lazy", "pivot", "strings"] }

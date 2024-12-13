@@ -1,3 +1,7 @@
+use petgraph::algo::min_spanning_tree;
+use petgraph::data::FromElements;
+use petgraph::graph::UnGraph;
+use petgraph::visit::EdgeRef;
 use polars::prelude::*;
 use std::env;
 use std::error::Error;
@@ -50,6 +54,7 @@ fn parse_and_prepare_df() -> Result<DataFrame, Box<dyn Error>> {
 }
 
 fn convert_and_diff_df(long_df: &DataFrame) -> Result<DataFrame, Box<dyn Error>> {
+    // Pivot to wide-form data
     let wide_df = pivot::pivot_stable(
         long_df,
         ["region"],
@@ -62,6 +67,7 @@ fn convert_and_diff_df(long_df: &DataFrame) -> Result<DataFrame, Box<dyn Error>>
     .lazy()
     .sort(["date"], Default::default())
     .drop(["date"])
+    // Calculate deltas
     .select([all().map(
         |price| {
             let price_shifted = price.shift(1);
@@ -76,8 +82,10 @@ fn convert_and_diff_df(long_df: &DataFrame) -> Result<DataFrame, Box<dyn Error>>
 }
 
 fn calc_corr_df(wide_df: DataFrame) -> Result<(Vec<PlSmallStr>, DataFrame), Box<dyn Error>> {
+    // Get region names
     let regions = wide_df.get_column_names_owned();
 
+    // Find pairwise Pearson correlation
     let corr = wide_df
         .lazy()
         .select(
@@ -96,19 +104,65 @@ fn calc_corr_df(wide_df: DataFrame) -> Result<(Vec<PlSmallStr>, DataFrame), Box<
     Ok((regions, corr))
 }
 
+fn make_graph(regions: &[PlSmallStr], corr: &DataFrame) -> UnGraph<(), f64> {
+    let mut graph = UnGraph::<(), f64>::new_undirected();
+
+    // Create nodes
+    let nodes = (0..regions.len())
+        .map(|_| graph.add_node(()))
+        .collect::<Vec<_>>();
+
+    // Add edges
+    nodes.iter().enumerate().for_each(|(i, lhs)| {
+        nodes.iter().enumerate().for_each(|(j, rhs)| {
+            // Query corr matrix for corr
+            let corr = corr
+                .column(format!("{}, {}", regions[i], regions[j]).as_str())
+                .unwrap()
+                .get(0)
+                .unwrap()
+                .try_extract::<f64>()
+                .unwrap();
+            // Set weight to 1 / corr**2
+            let weight = f64::powf(corr, -2.0);
+
+            graph.add_edge(*lhs, *rhs, weight);
+        })
+    });
+
+    graph
+}
+
+fn describe_mst(regions: &[PlSmallStr], mst: &UnGraph<(), f64>) -> () {
+    // Print nodes
+    regions.iter().for_each(|region| println!("{}", region));
+
+    // Print edges
+    for edge in mst.edge_references() {
+        println!(
+            "{}, {}, {}",
+            regions[edge.source().index()],
+            regions[edge.target().index()],
+            edge.weight(),
+        );
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     env::set_var("POLARS_FMT_MAX_ROWS", "20");
     env::set_var("POLARS_FMT_MAX_COLS", "20");
 
     let long_df = parse_and_prepare_df()?;
-    println!("{}", long_df);
 
     let wide_df = convert_and_diff_df(&long_df)?;
-    println!("{}", wide_df);
 
     let (regions, corr) = calc_corr_df(wide_df)?;
-    println!("{:?}", regions);
-    println!("{}", corr);
+
+    let graph = make_graph(&regions, &corr);
+
+    let mst = UnGraph::<(), f64>::from_elements(min_spanning_tree(&graph));
+
+    describe_mst(&regions, &mst);
 
     Ok(())
 }
