@@ -1,12 +1,17 @@
+use env_logger::Env;
+use log::info;
 use petgraph::algo::min_spanning_tree;
 use petgraph::data::FromElements;
 use petgraph::graph::UnGraph;
 use petgraph::visit::EdgeRef;
 use polars::prelude::*;
-use std::env;
 use std::error::Error;
+use std::fs::File;
+use std::io::Write;
 
 fn parse_and_prepare_df() -> Result<DataFrame, Box<dyn Error>> {
+    info!("Parsing and preparing df");
+
     // Specify non-city regions in the dataset to remove
     let non_cities = Series::new(
         "non_cities".into(),
@@ -50,10 +55,14 @@ fn parse_and_prepare_df() -> Result<DataFrame, Box<dyn Error>> {
 
     let long_df = q.collect()?;
 
+    info!("long_df has {}", long_df);
+
     Ok(long_df)
 }
 
 fn convert_and_diff_df(long_df: &DataFrame) -> Result<DataFrame, Box<dyn Error>> {
+    info!("Converting and diffing df");
+
     // Pivot to wide-form data
     let wide_df = pivot::pivot_stable(
         long_df,
@@ -78,10 +87,14 @@ fn convert_and_diff_df(long_df: &DataFrame) -> Result<DataFrame, Box<dyn Error>>
     .fill_null(0)
     .collect()?;
 
+    info!("wide_df has {}", wide_df);
+
     Ok(wide_df)
 }
 
 fn calc_corr_df(wide_df: DataFrame) -> Result<(Vec<PlSmallStr>, DataFrame), Box<dyn Error>> {
+    info!("Calculating correlation matrix");
+
     // Get region names
     let regions = wide_df.get_column_names_owned();
 
@@ -101,10 +114,14 @@ fn calc_corr_df(wide_df: DataFrame) -> Result<(Vec<PlSmallStr>, DataFrame), Box<
         )
         .collect()?;
 
+    info!("corr has {}", corr);
+
     Ok((regions, corr))
 }
 
 fn make_graph(regions: &[PlSmallStr], corr: &DataFrame) -> UnGraph<(), f64> {
+    info!("Making graph");
+
     let mut graph = UnGraph::<(), f64>::new_undirected();
 
     // Create nodes
@@ -130,27 +147,60 @@ fn make_graph(regions: &[PlSmallStr], corr: &DataFrame) -> UnGraph<(), f64> {
         })
     });
 
+    info!(
+        "graph has {} nodes and {} edges",
+        graph.node_count(),
+        graph.edge_count()
+    );
+
     graph
 }
 
-fn describe_mst(regions: &[PlSmallStr], mst: &UnGraph<(), f64>) -> () {
-    // Print nodes
-    regions.iter().for_each(|region| println!("{}", region));
+fn find_mst(graph: &UnGraph<(), f64>) -> UnGraph<(), f64> {
+    info!("Finding mst");
 
-    // Print edges
-    for edge in mst.edge_references() {
-        println!(
-            "{}, {}, {}",
-            regions[edge.source().index()],
-            regions[edge.target().index()],
-            edge.weight(),
-        );
-    }
+    let mst = UnGraph::<(), f64>::from_elements(min_spanning_tree(&graph));
+
+    info!(
+        "mst has {} nodes and {} edges",
+        mst.node_count(),
+        mst.edge_count()
+    );
+
+    mst
+}
+
+fn describe_and_export_mst(
+    regions: &[PlSmallStr],
+    mst: &UnGraph<(), f64>,
+) -> Result<(), Box<dyn Error>> {
+    info!("Describing and exporting mst");
+
+    let mut file = File::create("data/mst.txt")?;
+
+    writeln!(file, "{} {}", mst.node_count(), mst.edge_count())?;
+
+    // Describe and export nodes
+    regions.iter().for_each(|region| {
+        println!("{}", region);
+        writeln!(file, "{}", region).unwrap();
+    });
+
+    // Describe and export edges
+    mst.edge_references().for_each(|edge| {
+        let u = edge.source().index();
+        let v = edge.target().index();
+        let w = edge.weight();
+
+        println!("{}, {}, {}", regions[u], regions[v], w);
+        writeln!(file, "{} {} {}", u, v, w).unwrap();
+    });
+
+    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    env::set_var("POLARS_FMT_MAX_ROWS", "20");
-    env::set_var("POLARS_FMT_MAX_COLS", "20");
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let long_df = parse_and_prepare_df()?;
 
@@ -160,9 +210,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let graph = make_graph(&regions, &corr);
 
-    let mst = UnGraph::<(), f64>::from_elements(min_spanning_tree(&graph));
+    let mst = find_mst(&graph);
 
-    describe_mst(&regions, &mst);
+    describe_and_export_mst(&regions, &mst)?;
 
     Ok(())
 }
