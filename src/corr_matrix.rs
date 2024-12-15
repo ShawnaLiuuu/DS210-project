@@ -34,9 +34,10 @@ mod tests {
 
         let corr_df = df![
             "Boston, Boston" => [1.0],
-        ].unwrap();
+        ]
+        .unwrap();
 
-        let corr_matrix = CorrMatrix{regions, corr_df};
+        let corr_matrix = CorrMatrix { regions, corr_df };
 
         corr_matrix.get(1, 2);
     }
@@ -50,9 +51,10 @@ mod tests {
             "Boston, New York" => [0.5],
             "New York, Boston" => [0.5],
             "New York, New York" => [1.0],
-        ].unwrap();
+        ]
+        .unwrap();
 
-        let corr_matrix = CorrMatrix{regions, corr_df};
+        let corr_matrix = CorrMatrix { regions, corr_df };
 
         assert_eq!(corr_matrix.get(0, 0), 1.0);
         assert_eq!(corr_matrix.get(0, 1), 0.5);
@@ -74,9 +76,10 @@ mod tests {
             "Boston, Chicago" => [0.67],
             "Boston, New York" => [0.33],
             "Boston, San Francisco" => [0.0],
-        ].unwrap();
+        ]
+        .unwrap();
 
-        let corr_matrix = CorrMatrix{regions, corr_df};
+        let corr_matrix = CorrMatrix { regions, corr_df };
 
         assert_eq!(corr_matrix.get(0, 0), 1.0);
         assert_eq!(corr_matrix.get(0, 1), 0.67);

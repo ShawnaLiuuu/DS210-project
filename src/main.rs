@@ -21,10 +21,10 @@ fn describe_and_export_mst(
     writeln!(file, "{} {}", mst.node_count(), mst.edge_count())?;
 
     // Describe and export nodes
-    corr_matrix.regions.iter().for_each(|region| {
-        println!("{}", region);
-        writeln!(file, "{}", region).unwrap();
-    });
+    corr_matrix
+        .regions
+        .iter()
+        .for_each(|region| println!("{}", region));
 
     // Describe and export edges
     mst.edge_references().for_each(|edge| {
@@ -36,7 +36,12 @@ fn describe_and_export_mst(
             "{}, {}, {}",
             corr_matrix.regions[u], corr_matrix.regions[v], corr
         );
-        writeln!(file, "{} {} {}", u, v, corr).unwrap();
+        writeln!(
+            file,
+            "{} {} {}",
+            corr_matrix.regions[u], corr_matrix.regions[v], corr
+        )
+        .unwrap();
     });
 
     Ok(())
