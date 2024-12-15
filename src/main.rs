@@ -16,7 +16,7 @@ fn describe_and_export_mst(
 ) -> Result<(), Box<dyn Error>> {
     info!("Describing and exporting mst");
 
-    let mut file = File::create("data/mst.txt")?;
+    let mut file = File::create("output/mst.txt")?;
 
     writeln!(file, "{} {}", mst.node_count(), mst.edge_count())?;
 
