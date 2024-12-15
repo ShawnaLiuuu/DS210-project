@@ -3,7 +3,8 @@
 ## Overview
 
 For this project,
-we use [this](https://www.kaggle.com/datasets/neuromusic/avocado-prices) Avocado price dataset from Kaggle.
+we use [this](https://www.kaggle.com/datasets/neuromusic/avocado-prices) Avocado price dataset from Kaggle,
+which has 18249 rows and 14 columns initially.
 Our goal is to answer whether correlated Avocado price movement relate to geographical closeness for US regions.
 Our overall approach is then to (1) calculate the Avocado price time series for each US region,
 (2) compute the correlation matrix between each pair of regions,
