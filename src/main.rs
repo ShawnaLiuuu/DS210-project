@@ -50,7 +50,7 @@ fn describe_and_export_mst(
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    let long_df = data::parse_and_prepare_df()?;
+    let long_df = data::parse_and_prepare_df("data/avocado.csv")?;
 
     let wide_df = data::convert_and_diff_df(&long_df)?;
 

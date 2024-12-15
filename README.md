@@ -144,3 +144,14 @@ at which point we export the MST into the edge list format.
 [2024-12-15T23:15:19Z INFO  avocado::graph] mst has 45 nodes and 44 edges
 [2024-12-15T23:15:19Z INFO  avocado] Describing and exporting mst
 ```
+
+## Implementation
+
+The source file structure closely follows the above outline.
+
+- `corr_matrix.rs`: This module implements the correlation matrix struct,
+  which wraps a regions list and a flat dataframe containing the pairwise corrs.
+- `data.rs`: This module cleans and transforms the data into wide form,
+  and then computes the correlation matrix struct.
+- `graph.rs`: This module creates the induced graph based on the correlation matrix and finds the MST.
+- `main.rs`: This module runs the data and graph functions and finally exports the MST into a readable format.

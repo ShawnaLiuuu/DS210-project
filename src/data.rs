@@ -3,7 +3,7 @@ use log::info;
 use polars::prelude::*;
 use std::error::Error;
 
-pub fn parse_and_prepare_df() -> Result<DataFrame, Box<dyn Error>> {
+pub fn parse_and_prepare_df(file: &str) -> Result<DataFrame, Box<dyn Error>> {
     info!("Parsing and preparing df");
 
     // Specify non-city regions in the dataset to remove
@@ -23,7 +23,7 @@ pub fn parse_and_prepare_df() -> Result<DataFrame, Box<dyn Error>> {
     );
 
     // Parse data
-    let q = LazyCsvReader::new("data/avocado.csv")
+    let q = LazyCsvReader::new(file)
         .with_has_header(true)
         .finish()?
         // Select relevant columns
