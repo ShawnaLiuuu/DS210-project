@@ -2,16 +2,16 @@ use env_logger::Env;
 use log::info;
 use petgraph::graph::UnGraph;
 use petgraph::visit::EdgeRef;
-use polars::prelude::*;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 
+mod corr_matrix;
 mod data;
 mod graph;
 
 fn describe_and_export_mst(
-    regions: &[PlSmallStr],
+    corr_matrix: &corr_matrix::CorrMatrix,
     mst: &UnGraph<(), f64>,
 ) -> Result<(), Box<dyn Error>> {
     info!("Describing and exporting mst");
@@ -21,7 +21,7 @@ fn describe_and_export_mst(
     writeln!(file, "{} {}", mst.node_count(), mst.edge_count())?;
 
     // Describe and export nodes
-    regions.iter().for_each(|region| {
+    corr_matrix.regions.iter().for_each(|region| {
         println!("{}", region);
         writeln!(file, "{}", region).unwrap();
     });
@@ -30,10 +30,13 @@ fn describe_and_export_mst(
     mst.edge_references().for_each(|edge| {
         let u = edge.source().index();
         let v = edge.target().index();
-        let w = edge.weight();
+        let corr = corr_matrix.get(u, v);
 
-        println!("{}, {}, {}", regions[u], regions[v], w);
-        writeln!(file, "{} {} {}", u, v, w).unwrap();
+        println!(
+            "{}, {}, {}",
+            corr_matrix.regions[u], corr_matrix.regions[v], corr
+        );
+        writeln!(file, "{} {} {}", u, v, corr).unwrap();
     });
 
     Ok(())
@@ -46,13 +49,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let wide_df = data::convert_and_diff_df(&long_df)?;
 
-    let (regions, corr) = data::calc_corr_df(wide_df)?;
+    let corr_matrix = data::calc_corr_df(wide_df)?;
 
-    let graph = graph::make_graph(&regions, &corr);
+    let graph = graph::make_graph(&corr_matrix);
 
     let mst = graph::find_mst(&graph);
 
-    describe_and_export_mst(&regions, &mst)?;
+    describe_and_export_mst(&corr_matrix, &mst)?;
 
     Ok(())
 }

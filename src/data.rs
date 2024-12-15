@@ -1,3 +1,4 @@
+use crate::corr_matrix;
 use log::info;
 use polars::prelude::*;
 use std::error::Error;
@@ -85,14 +86,14 @@ pub fn convert_and_diff_df(long_df: &DataFrame) -> Result<DataFrame, Box<dyn Err
     Ok(wide_df)
 }
 
-pub fn calc_corr_df(wide_df: DataFrame) -> Result<(Vec<PlSmallStr>, DataFrame), Box<dyn Error>> {
+pub fn calc_corr_df(wide_df: DataFrame) -> Result<corr_matrix::CorrMatrix, Box<dyn Error>> {
     info!("Calculating correlation matrix");
 
     // Get region names
     let regions = wide_df.get_column_names_owned();
 
     // Find pairwise Pearson correlation
-    let corr = wide_df
+    let corr_df = wide_df
         .lazy()
         .select(
             regions
@@ -107,7 +108,7 @@ pub fn calc_corr_df(wide_df: DataFrame) -> Result<(Vec<PlSmallStr>, DataFrame), 
         )
         .collect()?;
 
-    info!("corr has {}", corr);
+    info!("corr_df has {}", corr_df);
 
-    Ok((regions, corr))
+    Ok(corr_matrix::CorrMatrix { regions, corr_df })
 }
