@@ -8,7 +8,7 @@ which has 18249 rows and 14 columns initially.
 Our goal is to answer whether correlated Avocado price movement relate to geographical closeness for US regions.
 Our overall approach is then to (1) calculate the Avocado price time series for each US region,
 (2) compute the correlation matrix between each pair of regions,
-(3) construct a complete undirected weighted graph based on some functions of the correlation,
+(3) construct a complete undirected weighted graph based on some function of the correlation,
 and (4) compute the minimum spanning tree of the graph and interpret the result.
 
 ## Output
